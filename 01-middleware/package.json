@@ -13,6 +13,7 @@
     "babel-preset-env": "^1.7.0",
     "babel-register": "^6.26.0",
     "koa": "^2.11.0",
+    "koa-router": "^7.4.0",
     "yarn": "^1.19.2"
   }
 }

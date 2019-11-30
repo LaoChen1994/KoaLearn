@@ -17,7 +17,8 @@
 - HTTP 服务
   - 处理 HTTP 请求 request
   - 发送 HTTP 响应 response
-- - 中间件加载
+- 中间件执行
+  - 中间件加载
   - 中间件执行
 
 ## 1. 安装 Koa 环境
@@ -167,4 +168,156 @@ async function handleRouter(ctx, next) {
   await next();
 }
 ~~~
+
+### 6. 使用koa-router中间件
+
+#### 1. 简单路由
+
+~~~javascript
+// use-koa-router.js
+const Koa = require('koa');
+const app = new Koa();
+
+// 这里两句可以合并为 index = 
+const Router = require('koa-router');
+let index = new Router();
+let todo = new Router();
+
+// 这里链式添加和单独添加是一样的效果
+index
+  .get('/user', async ctx => {
+    ctx.body = 'user';
+  })
+  .get('/index', async ctx => {
+    ctx.body = 'index';
+  })
+  .get('/', async ctx => {
+    ctx.body = `
+    <ul>
+      <li><a href="/index">index</a></li>
+      <li><a href="/user">user</a></li>
+    </ul>
+  `;
+  });
+
+todo.get('/todo', async ctx => {
+  ctx.body = 'todo';
+});
+
+// 多个应用的可以直接通过app.use添加多个路由的中间件
+app.use(index.routes(), index.allowedMethods());
+app.use(todo.routes(), index.allowedMethods());
+
+app.listen(3000, () => {
+  console.log('port start in 3000');
+});
+~~~
+
+#### 2. 分层路由
+
++ 创建一个根目录的路由Router
++ 创建配置一个子路由Router
++ 调用根目录的use方法，设置prefix和子路由routes
++ 将根目录的router配置到app中
+
+~~~javascript
+// use-koa-router.js
+const childRouter = new Router();
+const child2Router = new Router();
+const rootRouter = new Router();
+
+childRouter
+  .get('/index', async ctx => {
+    ctx.body = 'root index';
+  })
+  .get('/', async ctx => {
+    ctx.body = 'root';
+  });
+
+child2Router
+  .get('/index', async ctx => {
+    ctx.body = 'subRoot index';
+  })
+  .get('/', async ctx => {
+    ctx.body = 'subRoot';
+  });
+
+rootRouter.use('/root', childRouter.routes(), childRouter.allowedMethods());
+rootRouter.use(
+  '/subroot',
+  child2Router.routes(),
+  child2Router.allowedMethods()
+);
+
+app.use(rootRouter.routes(), rootRouter.allowedMethods());
+~~~
+
+**结果**
+
+![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_103.png)
+
+![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_104.png)
+
++ 可以路由到相关的页面
+
+#### 3. 动态获取路由参数
+
++ 通过:分隔符来隔开变量名
++ 通过ctx.params获得路由的动态参数
+
+~~~javascript
+// use-koa-router.js
+const dynamicRouter = new Router();
+dynamicRouter.get('/table/:id/:category/:position', async ctx => {
+  ctx.body = ctx.params;
+});
+rootRouter.use('/dyn', dynamicRouter.routes(), dynamicRouter.allowedMethods());
+~~~
+
+**结果**
+
+![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_105.png)
+
+这里得到的参数名，和我们:之后的变量名是对应的
+
+### 7. 数据接口
+
+#### 1. Get请求
+
++ 处理Get请求
+
+~~~javascript
+// queryRequest.js
+const Koa = require('koa');
+const app = new Koa();
+const Router = require('koa-router');
+
+const apiRouter = new Router();
+
+apiRouter.get('/getName', async ctx => {
+  const { id } = ctx.query;
+  const nameList = ['Jack', 'Mike', 'Mary', 'Joe'];
+
+  try {
+    ctx.body = {
+      name: nameList[+id]
+    };
+  } catch (error) {
+    console.log(error);
+    ctx.body = {
+      error
+    };
+  }
+});
+
+app.use(apiRouter.routes(), apiRouter.allowedMethods());
+
+app.listen(3000, () => {
+  console.log('koa server is running in port 3000');
+});
+~~~
+
+#### 2. Post请求
+
+
 
