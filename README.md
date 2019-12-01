@@ -21,6 +21,8 @@
   - 中间件加载
   - 中间件执行
 
+**代码GitHub地址：**[github地址](https://github.com/LaoChen1994/KoaLearn)
+
 ## 1. 安装 Koa 环境
 
 ```bash
@@ -110,7 +112,9 @@ const { logger } = require('./middleware/logger.js');
 app.use(logger());
 ```
 
-### 4. 使用中间件处理请求
+## 3. 路由
+
+### 1. 使用中间件处理请求
 
 ~~~javascript
 // router.js
@@ -125,7 +129,7 @@ module.exports = { handleReq };
 
 详细request内包含的属性可查看: [Koa2 context.request](https://koa.bootcss.com/#request)
 
-### 5. 简单的页面路由
+### 2. 简单的页面路由
 
 **思路**:
 
@@ -169,7 +173,7 @@ async function handleRouter(ctx, next) {
 }
 ~~~
 
-### 6. 使用koa-router中间件
+### 3. 使用koa-router中间件
 
 #### 1. 简单路由
 
@@ -254,9 +258,9 @@ app.use(rootRouter.routes(), rootRouter.allowedMethods());
 
 **结果**
 
-![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_103.png)
+![](./image/选区_103.png)
 
-![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_104.png)
+![](./image/选区_104.png)
 
 + 可以路由到相关的页面
 
@@ -276,11 +280,11 @@ rootRouter.use('/dyn', dynamicRouter.routes(), dynamicRouter.allowedMethods());
 
 **结果**
 
-![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_105.png)
+![](./image/选区_105.png)
 
 这里得到的参数名，和我们:之后的变量名是对应的
 
-### 7. 数据接口
+## 4. 处理HTTP请求
 
 #### 1. Get请求
 
@@ -317,7 +321,97 @@ app.listen(3000, () => {
 });
 ~~~
 
++ 结果
+
+![](./image/选区_106.png)
+
 #### 2. Post请求
+
++ 通过监控req的data和end事件来接受post数据，并将post表单数据转为queryString
+
+~~~javascript
+// queryRequest.js
+//　手动获取post数据
+const parsePostData = ctx =>
+  new Promise((resolve, reject) => {
+    let postData = '';
+    // post请求将post表单的数据转换为queryString
+    ctx.req.addListener('data', data => {
+      postData += data;
+    });
+	// 以end为queryString结束的标志
+    ctx.req.addListener('end', () => {
+      const obj = queryString.parse(postData);
+      resolve(obj);
+    });
+  });
+
+// 加载表单模板（为了测试post请求结果）
+apiRouter.get('/', async ctx => {
+  const html = await getFileContent('./view/post.html');
+  ctx.body = html;
+});
+
+//　post
+apiRouter.post('/postName', async ctx => {
+  let postData = await parsePostData(ctx);
+  ctx.body = postData;
+});
+
+app.use(apiRouter.routes(), apiRouter.allowedMethods());
+
+app.listen(3000, () => {
+  console.log('koa server is running in port 3000');
+});
+
+~~~
+
++ 结果
+
+![](./image/选区_107.png)
+
++ 点击提交
+
+![](./image/选区_108.png)
+
+
+
+#### 3. bodyParser处理Post请求
+
+##### 1. 安装koa-bodyParser
+
+~~~bash
+yarn add koa-bodyparser
+~~~
+
+##### 2. 导入koa-bodyparser中间件
+
++ bodyParser是将queryString进行打包, 然后将处理完的结果存到ctx.req.body中
++ 处理Post请求
+
+~~~javascript
+const bodyParser = require('koa-bodyparser');
+app.use(bodyParser());
+
+//　这里添加了koa-router
+apiRouter.get('/body', async ctx => {
+  const html = await getFileContent('./view/bodyParser.html');
+  ctx.body = html;
+});
+
+// use koa-bodyparser
+apiRouter.post('/body/postName', async ctx => {
+  //　ctx.request.body中是由该中间件向其中添加的
+  let postData = ctx.request.body;
+  ctx.body = postData;
+});
+~~~
+
+> Notes: 如果添加了koa-bodyparser之前通过监控ctx.req中的data和end的事件的获取post参数的方法可能失效
+
+
+
+## 5.  静态资源加载
 
 
 
