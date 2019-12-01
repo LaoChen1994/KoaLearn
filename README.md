@@ -114,22 +114,7 @@ app.use(logger());
 
 ## 3. 路由
 
-### 1. 使用中间件处理请求
-
-~~~javascript
-// router.js
-async function handleReq(ctx, next) {
-  //　通过ctx.req.url可以请求的url
-  ctx.body = ctx.req.url.replace(/(\/)/gi, ' ');
-  await next();
-}
-
-module.exports = { handleReq };
-~~~
-
-详细request内包含的属性可查看: [Koa2 context.request](https://koa.bootcss.com/#request)
-
-### 2. 简单的页面路由
+### 1. 简单的页面路由
 
 **思路**:
 
@@ -173,7 +158,7 @@ async function handleRouter(ctx, next) {
 }
 ~~~
 
-### 3. 使用koa-router中间件
+### 2. 使用koa-router中间件
 
 #### 1. 简单路由
 
@@ -286,7 +271,24 @@ rootRouter.use('/dyn', dynamicRouter.routes(), dynamicRouter.allowedMethods());
 
 ## 4. 处理HTTP请求
 
-#### 1. Get请求
+#### 1. 简单处理HTTP
+
+**中间件处理请求**
+
+~~~javascript
+// router.js
+async function handleReq(ctx, next) {
+  //　通过ctx.req.url可以请求的url
+  ctx.body = ctx.req.url.replace(/(\/)/gi, ' ');
+  await next();
+}
+
+module.exports = { handleReq };
+~~~
+
+详细request内包含的属性可查看: [Koa2 context.request](https://koa.bootcss.com/#request)
+
+#### 2. Get请求
 
 + 处理Get请求
 
@@ -325,7 +327,7 @@ app.listen(3000, () => {
 
 ![](./image/选区_106.png)
 
-#### 2. Post请求
+#### 3. Post请求
 
 + 通过监控req的data和end事件来接受post数据，并将post表单数据转为queryString
 
@@ -376,7 +378,7 @@ app.listen(3000, () => {
 
 
 
-#### 3. bodyParser处理Post请求
+#### 4. bodyParser处理Post请求
 
 ##### 1. 安装koa-bodyParser
 
