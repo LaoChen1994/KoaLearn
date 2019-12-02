@@ -415,5 +415,313 @@ apiRouter.post('/body/postName', async ctx => {
 
 ## 5.  静态资源加载
 
+搭建一个静态资源服务器
+
+### 0. 参考教程
+
++ [koa静态资源加载](https://chenshenhai.github.io/koa2-note/note/static/server.html)
++ [koa官网request部分](https://koa.bootcss.com/#request)
++ [nodejs文档](http://nodejs.cn/api/fs.html#fs_fs_write_fd_buffer_offset_length_position_callback)
++ [源码github](https://github.com/LaoChen1994/KoaLearn/tree/master/02-static)
+
+### 1. 思路
+
++ 通过url的path获得所查询目录地址
++ 如果path代表一个文件就进行读取，并显示
++ 如果path代表一个文件夹，就显示文件夹下的文件目录
++ 显示文件若是图片需要通过二进制读取写入文件，若文件是文本就通过utf-8格式读取，然后通过utf-8输出
+
+### 2. 代码实现
+
+#### 1. 目录结构
+
+![](./image/选区_109.png)
+
+#### 2. 代码实现
+
+~~~javascript
+const getMimes = url => {
+  // 通过扩展名得到文件的MIME
+  const extname = path.extname(url).slice(1);
+  return mimes[extname];
+};
+
+app.use(async ctx => {
+  // fullPath来获取实际文件的目录
+  let fullPath = path.resolve(__dirname, staticPath);
+  //　通过url获得请求的文件路径地址
+  let reqPath = ctx.req.url;
+  
+  //　获得请求文件的MIME
+  let mime = getMimes(reqPath);
+  //　根据MIME来判断是否为图片资源
+  const isImage = mime && mime.startsWith('image');
+  const content = await getContent(fullPath + reqPath, isImage);
+
+  if (isImage) {
+    // 如果是图片资源需要利用node http原生的方法写入res
+    //　response.writeHead()
+    ctx.res.writeHead('200');
+    ctx.res.write(content, 'binary');
+    // response.end()
+    ctx.res.end();
+  } else {
+    typeof content === 'string' && (ctx.body = content);
+    Array.isArray(content) && (ctx.body = createHtml(content, ctx));
+  }
+});
+~~~
+
+~~~javascript
+// 将扩展名转换为ＭＩＭＥ
+let mimes = {
+  css: 'text/css',
+  less: 'text/css',
+  gif: 'image/gif',
+  html: 'text/html',
+  ico: 'image/x-icon',
+  jpeg: 'image/jpeg',
+  jpg: 'image/jpeg',
+  js: 'text/javascript',
+  json: 'application/json',
+  pdf: 'application/pdf',
+  png: 'image/png',
+  svg: 'image/svg+xml',
+  swf: 'application/x-shockwave-flash',
+  tiff: 'image/tiff',
+  txt: 'text/plain',
+  wav: 'audio/x-wav',
+  wma: 'audio/x-ms-wma',
+  wmv: 'video/x-ms-wmv',
+  xml: 'text/xml'
+};
+~~~
+
+~~~javascript
+// content.js
+const getContent = async (path, isImage) => {
+  let content = '';
+
+  try {
+    const isExist = await fileExist(path);
+    if (isExist.isFile()) {
+      // 如果是图片文件用二进制读取
+      if (isImage) {
+        content = await getFileContent(path, 'binary');
+      } else {
+        // 普通文本用utf-8编码如果用二进制编码点击文件会进入下载模式
+        content = await getFileContent(path, 'utf-8');
+      }
+    } else {
+      //　这里getDir返回的是一个Array, 里面是目录下的文件信息
+      content = await getDirContent(path);
+      return content;
+    }
+  } catch (error) {
+    console.log(error);
+    return 'asset is not Existed';
+  }
+  return content;
+};
+
+// 生成一个fs.stat对象
+// 判断路径对应的文件是一个文件夹还是一个具体的文件
+//　这里其实可以用fs.statSync但是就是想任性封装一个Promise hhh
+const fileExist = async filePath =>
+  new Promise((resolve, reject) => {
+    fs.stat(filePath, (err, status) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(status);
+      }
+    });
+  });
+
+//　通过fs.readFile来读取文件内容
+const getFileContent = (filePath, mode) => {
+  return new Promise((resolve, reject) => {
+    fs.readFile(filePath, mode, (err, data) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(data);
+      }
+    });
+  });
+};
+
+//　通过readdir读取文件夹下文件信息
+const getDirContent = filePath => {
+  return new Promise((resolve, reject) => {
+    fs.readdir(filePath, (err, dirList) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(dirList);
+      }
+    });
+  });
+};
+~~~
+
+#### 3. 完整代码
+
++ index.js
+
+~~~javascript
+//　index.js
+const Koa = require('koa');
+const path = require('path');
+const mimes = require('./util/mime.js');
+const { getContent } = require('./util/content.js');
+const { createHtml } = require('./util/create.js');
+
+const app = new Koa();
+const staticPath = './static';
+
+const getMimes = url => {
+  const extname = path.extname(url).slice(1);
+  return mimes[extname];
+};
+
+app.use(async ctx => {
+  let fullPath = path.resolve(__dirname, staticPath);
+  let reqPath = ctx.req.url;
+  let mime = getMimes(reqPath);
+  const isImage = mime && mime.startsWith('image');
+  const content = await getContent(fullPath + reqPath, isImage);
+
+  if (isImage) {
+    ctx.res.writeHead('200');
+    ctx.res.write(content, 'binary');
+    ctx.res.end();
+  } else {
+    typeof content === 'string' && (ctx.body = content);
+    Array.isArray(content) && (ctx.body = createHtml(content, ctx));
+  }
+});
+
+app.listen(5000, () => {
+  console.log('Koa server start on port 5000!');
+});
+~~~
+
++ mime.js
+
+~~~javascript
+let mimes = {
+  css: 'text/css',
+  less: 'text/css',
+  gif: 'image/gif',
+  html: 'text/html',
+  ico: 'image/x-icon',
+  jpeg: 'image/jpeg',
+  jpg: 'image/jpeg',
+  js: 'text/javascript',
+  json: 'application/json',
+  pdf: 'application/pdf',
+  png: 'image/png',
+  svg: 'image/svg+xml',
+  swf: 'application/x-shockwave-flash',
+  tiff: 'image/tiff',
+  txt: 'text/plain',
+  wav: 'audio/x-wav',
+  wma: 'audio/x-ms-wma',
+  wmv: 'video/x-ms-wmv',
+  xml: 'text/xml'
+};
+
+module.exports = mimes;
+~~~
+
++ content.js
+
+~~~javascript
+const fs = require('fs');
+const path = require('path');
+
+const fileExist = async filePath =>
+  new Promise((resolve, reject) => {
+    fs.stat(filePath, (err, status) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(status);
+      }
+    });
+  });
+
+const getFileContent = (filePath, mode) => {
+  return new Promise((resolve, reject) => {
+    fs.readFile(filePath, mode, (err, data) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(data);
+      }
+    });
+  });
+};
+
+const getDirContent = filePath => {
+  return new Promise((resolve, reject) => {
+    fs.readdir(filePath, (err, dirList) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(dirList);
+      }
+    });
+  });
+};
+
+const getContent = async (path, isImage) => {
+  let content = '';
+
+  try {
+    const isExist = await fileExist(path);
+    if (isExist.isFile()) {
+      if (isImage) {
+        content = await getFileContent(path, 'binary');
+      } else {
+        content = await getFileContent(path, 'utf-8');
+      }
+    } else {
+      content = await getDirContent(path);
+      return content;
+    }
+  } catch (error) {
+    console.log(error);
+    return 'asset is not Existed';
+  }
+  return content;
+};
+
+module.exports = {
+  getContent
+};
+~~~
+
++ create.js
+
+~~~javascript
+const createHtml = (pathList, ctx) => {
+  const { url } = ctx.req;
+  let content = pathList.reduce((prev, curr) => {
+    prev += `<li><a href="${url === '/' ? '' : url}/${curr}">${curr}</a></li>`;
+    return prev;
+  }, '');
+
+  return `<ul>${content}</ul>`;
+};
+
+module.exports = {
+  createHtml
+};
+~~~
+
+
+
 
 
