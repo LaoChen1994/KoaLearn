@@ -721,7 +721,35 @@ module.exports = {
 };
 ~~~
 
++ 结果
 
+![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_112.png)
 
+![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_113.png)
 
+![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_114.png)
+
+#### 4. 使用koa-static
+
+~~~javascript
+//　使用koa-static中间件可以自动加载static特定目录下的文件并返回
+const Koa = require('koa');
+const path = require('path');
+const static = require('koa-static');
+
+const app = new Koa();
+const staticPath = './static';
+
+app.use(static(path.join(__dirname, staticPath)));
+
+app.listen(3000, () => {
+  console.log('static middleware is starting at port 3000');
+});
+~~~
+
++ 结果
+
+![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_111.png)
+
+## 6. Cookie和Session
 
