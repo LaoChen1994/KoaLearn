@@ -753,3 +753,268 @@ app.listen(3000, () => {
 
 ## 6. Cookie和Session
 
+### 参考
+
++ [cookie原理解析](https://www.jianshu.com/p/a962635034db)
++ [这一次带你彻底了解cookie](https://juejin.im/entry/5a29fffa51882531ba10da1c)
+
+### 1. Cookie原理解析
+
+##### 1. **Cookie需求**
+
+> 同服务器保持活动状态，保持Web浏览器状态的手段.(例子:web浏览器可以记忆用户的登录信息)
+>
+> 当服务端setCookie之后下次会自动带上相应的cookie信息
+
+##### 2. **用户登录机制解析**
+
+cookie机制如下图所示：
+
+![cookie机制](https://upload-images.jianshu.io/upload_images/226662-0d47c78163124066?imageMogr2/auto-orient/strip|imageView2/2/format/webp)
+
++ 用户第一次登录输入帐号密码，传到服务端
++ 服务端确认登录成功后返回给用户一个带有用户id信息的cookie，并保存用户的ID
++ 当下次用户进入相应的页面时，获取保存本地的用户ID
++ 将用户ID发给服务器，进入登录状态
+
+##### 3. cookie的参数
+
++ key: cookie保存在浏览器内的name
++ value: cookie保存在浏览器内的值
+
++ domain: 来表示哪个域名可以看到Cookie
++ path: 某个域名下的某路径，或者该路径下的子目录都能看到这个Cookie
++ expire: cookie的有效期
++ secure: 是否可以通过安全的HTTPS来传输cookie
+
+### 2. Koa使用Cookie
+
++ Cookie的读取: ctx.cookies.get
++ Cookie的设置: ctx.cookies.set
+
+##### 1. setCookie参数设置
+
+具体设置方法参考：[cookies](https://github.com/pillarjs/cookies)
+
+![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_115.png)
+
+##### 2. setCookie设置cookie
+
+~~~javascript
+// index.js
+const Koa = require('koa');
+const router = require('koa-router')();
+const { setCookie } = require('./middleware/cookie.js');
+
+const app = new Koa();
+
+router.get('/', async ctx => {
+  ctx.body = 'Root';
+});
+
+app.use(setCookie);
+
+app.use(router.routes(), router.allowedMethods());
+
+app.listen(3000, () => {
+  console.log('server is on port 3000');
+});
+~~~
+
++ setCookie
+
+~~~javascript
+const setCookie = async (ctx, next) => {
+  if (ctx.url === '/index') {
+    ctx.cookies.set('name', 'HelloWorld', {
+      domain: 'localhost',
+      path: '/index',
+      expires: new Date('2019-12-3'),
+      secure: false
+    });
+    ctx.body = 'set Cookie';
+  }
+  await next();
+};
+
+module.exports = {
+  setCookie
+};
+~~~
+
+##### 3. 结果
+
++ 在domain, path内可以查看到cookies
+
+![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_116.png)
+
++ 不在domain和path域中的地址将看不到cookie
+
+![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_117.png)
+
+### 3. Session原理解析
+
+#### 1. Session特点
+
+​	Sesssion和Cookie的区别，Session会设置一个失效时间，当超过了这个失效时间，服务器就会认为客户已经停止此次会话，并删除session。session在前端只保存对应信息的sessionId, 前端查询出sessionId发送到后端，后端用这个sessionId查出对应的信息，并进行后序操作，而cookie可能会将信息都保存在前端。
+
+​	另外cookie所存储的数据量较小，如果是较大数据(> 4kb)则无法通过cookie进行存储
+
+​	session是通过cookie来存储sessionId, 当setCookie 之后会自动带上
+
+#### 2. koa实现session
+
+##### 1. 方案
+
++ session数据量小, 直接存在内存中(koa-session-minimal)
++ session数据较大情况, koa-mysql-session
+
+##### 2. 所安装库
+
++ koa-session
++ koa-session2
++ ioredis
+
+##### 3. 不用数据库
+
+~~~javascript
+const session = require('koa-session');
+const Koa = require('koa');
+const app = new Koa();
+
+app.keys = ['some secret hurr'];
+
+// cookie配置
+const CONFIG = {
+  key: 'koa:sess' /** (string) cookie key (default is koa:sess) */,
+  /** (number || 'session') maxAge in ms (default is 1 days) */
+  /** 'session' will result in a cookie that expires when session/browser is closed */
+  /** Warning: If a session cookie is stolen, this cookie will never expire */
+  maxAge: 3000,
+  autoCommit: true /** (boolean) automatically commit headers (default true) */,
+  overwrite: true /** (boolean) can overwrite or not (default true) */,
+  httpOnly: true /** (boolean) httpOnly or not (default true) */,
+  signed: true /** (boolean) signed or not (default true) */,
+  rolling: false /** (boolean) Force a session identifier cookie to be set on every response. The expiration is reset to the original maxAge, resetting the expiration countdown. (default is false) */,
+  renew: false /** (boolean) renew session when session is nearly expired, so we can always keep user logged in. (default is false)*/
+};
+
+//　绑定session, 设置其中context.session里面的值
+app.use(session(CONFIG, app));
+// or if you prefer all default config, just use => app.use(session(app));
+
+app.use(ctx => {
+  // ignore favicon
+  if (ctx.path === '/favicon.ico') return;
+  let name = "Mike";
+  let password = '123'
+  ctx.session = {name, password}
+  ctx.body = n + ' views';
+});
+
+app.listen(3000);
+console.log('listening on port 3000');
+
+~~~
+
+##### 4. 不用数据库实验结果
+
+![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_118.png)
+
++ 1: 第一次进入页面，此时没有sessionId, 因此查询不到
++ 2: 由于上一次请求，这次的sessionId和相同，能获取到
++ 3: 过3s之后由于session已经过期，所以重新产生sessionId并传给前端
++ 3: 在没有过期之前，sessionId是相同的
+
+##### 5. 使用Redis数据库
+
+~~~bash
+# 安装redis ioredis 和 koa-session2
+yarn add ioredis
+yarn add koa-session2
+~~~
+
++ [koa-session2官网redis配置](https://www.npmjs.com/package/koa-session2)
+
+~~~javascript
+// redis-server.js
+const Koa = require('koa');
+const session = require('koa-session2');
+const Store = require('./store/redis.js');
+const router = require('koa-router')();
+
+const app = new Koa();
+
+app.use(
+  //　这里session配置是obj的形式
+  session({
+    store: new Store(),
+    key: 'SessionId',
+    maxAge: 3600
+  })
+);
+
+router.get('/index', async ctx => {
+  const userId =
+    ctx.session.userId ||
+    Math.random()
+      .toString(36)
+      .substr(2);
+  const count = ctx.session.count || 0;
+  ctx.session = { userId, count };
+  ctx.body = ctx.session;
+});
+
+app.use(router.routes(), router.allowedMethods());
+
+app.use(ctx => {
+  // refresh session if set maxAge
+  ctx.session.refresh();
+});
+
+app.listen(3000, () => {
+  console.log('port open on 3000');
+});
+
+~~~
+
++ redis.js配置
+
+~~~javascript
+const Redis = require('ioredis');
+const { Store } = require('koa-session2');
+
+class RedisStore extends Store {
+  constructor(options = {}) {
+    super(options);
+    this.redis = new Redis(options);
+    this.options = options;
+  }
+
+  async get(sid, ctx) {
+    let data = await this.redis.get(`SESSION:${sid}`);
+    return JSON.parse(data);
+  }
+
+  async set(session, { sid = this.getID(24), maxAge = 3000 } = {}, ctx) {
+    try {
+      console.log(maxAge);
+      // Use redis set EX to automatically drop expired sessions
+      await this.redis.set(
+        `SESSION:${sid}`,
+        JSON.stringify(session),
+        'EX',
+        maxAge / 1000
+      );
+    } catch (e) {}
+    return sid;
+  }
+
+  async destroy(sid, ctx) {
+    return await this.redis.del(`SESSION:${sid}`);
+  }
+}
+
+module.exports = RedisStore;
+~~~
+
