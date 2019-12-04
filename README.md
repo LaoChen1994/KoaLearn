@@ -723,11 +723,11 @@ module.exports = {
 
 + 结果
 
-![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_112.png)
+![](./image/选区_112.png)
 
-![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_113.png)
+![](./image/选区_113.png)
 
-![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_114.png)
+![](./image/选区_114.png)
 
 #### 4. 使用koa-static
 
@@ -749,7 +749,7 @@ app.listen(3000, () => {
 
 + 结果
 
-![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_111.png)
+![](./image/选区_111.png)
 
 ## 6. Cookie和Session
 
@@ -796,7 +796,7 @@ cookie机制如下图所示：
 
 具体设置方法参考：[cookies](https://github.com/pillarjs/cookies)
 
-![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_115.png)
+![](./image/选区_115.png)
 
 ##### 2. setCookie设置cookie
 
@@ -846,11 +846,11 @@ module.exports = {
 
 + 在domain, path内可以查看到cookies
 
-![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_116.png)
+![](./image/选区_116.png)
 
 + 不在domain和path域中的地址将看不到cookie
 
-![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_117.png)
+![](./image/选区_117.png)
 
 ### 3. Session原理解析
 
@@ -919,7 +919,7 @@ console.log('listening on port 3000');
 
 ##### 4. 不用数据库实验结果
 
-![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_118.png)
+![](./image/选区_118.png)
 
 + 1: 第一次进入页面，此时没有sessionId, 因此查询不到
 + 2: 由于上一次请求，这次的sessionId和相同，能获取到
@@ -1017,4 +1017,303 @@ class RedisStore extends Store {
 
 module.exports = RedisStore;
 ~~~
+
+
+
+## 7. 模板引擎ejs
+
+### 1. 环境安装
+
+~~~bash
+# ejs模板引擎安装
+yarn add ejs
+# 利用Koa-views中间件添加一个ctx.render/ctx.response.render方法
+yarn add koa-views
+~~~
+
+### 2. 简单例子
+
+~~~javascript
+// index.js
+const Koa = require('koa');
+const path = require('path');
+const views = require('koa-views');
+
+const app = new Koa();
+
+// 利用views添加模板路径和需要使用的模板引擎
+app.use(views(path.join(__dirname, './views')), {
+  extension: 'ejs'
+});
+
+// 利用koa-views添加的render方法来渲染模板引擎
+app.use(async ctx => {
+  let title = 'Hello Koa 2';
+  let name = 'Mike';
+  let age = 18;
+  // 渲染views/index.ejs
+  await ctx.render('index.ejs', {
+    title,
+    name,
+    age
+  });
+});
+
+app.listen(3000, () => {
+  console.log('server is on port 3000');
+});
+~~~
+
+~~~javascript
+// index.ejs
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title><%= title %></title>
+  </head>
+  <body>
+    <h1><%= title %></h1>
+    <p>My name is <%= name %>, <%= age %> years old</p>
+  </body>
+</html>
+~~~
+
+#### 1. ejs的标签含义
+
++ <%: script标签，用于控制流，不会输出在页面上
++ <%_: 删除其前面的空格符
++ <%=: 将数据输出到页面上
++ <%-: 输出非转义的数据到模板
++ <%#: 注释标签，不执行，不输出内容
++ %>: 一般结束标签
++ -%>: 删除后序的换行符
++ -%>: 将结束后的空格符删除
+
+[ejs标签含义](https://github.com/mde/ejs)
+
+#### 2. 在ejs中使用控制流
+
+~~~ejs
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="wFidth=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title><%= title %></title>
+  </head>
+  <body>
+    <h1><%= title %></h1>
+    <p>My name is <%= name %>, <%= age %> years old</p>
+    <div>My Friends:</div>
+    <ul>
+      <% friends.forEach((elem, index) => { %>
+      <li><%= index+ 1%>-<%= elem %></li>
+      <%})%>
+    </ul>
+  </body>
+</html>
+~~~
+
+~~~javascript
+app.use(async ctx => {
+  let title = 'Hello Koa 2';
+  let name = 'Mike';
+  let age = 18;
+  let friends = ['Jerry', 'Tom', 'Jack'];
+  await ctx.render('index.ejs', {
+    title,
+    name,
+    age,
+    friends
+  });
+});
+~~~
+
++ 结果
+
+![](./image/选区_122.png)
+
+### 3. include
+
+可以通过Include来导入其他模板
+
++ index.ejs
+
+~~~ejs
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="wFidth=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title><%= title %></title>
+  </head>
+  <body>
+    <!--- 参数直接通过第二个obj传入 --->
+    <%- include('./header.ejs', {title: title}); %>
+    <h1><%= title %></h1>
+    <p>My name is <%= name %>, <%= age %> years old</p>
+    <div>My Friends:</div>
+    <ul>
+      <% friends.forEach((elem, index) => { %>
+      <li><%= index+ 1%>-<%= elem %></li>
+      <%})%>
+    </ul>
+  </body>
+</html>
+
+~~~
+
++ header.ejs
+
+~~~ejs
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Document</title>
+    <style>
+      .color {
+        background: blue;
+        color: #fff;
+        height: 100px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="color">
+      This is Header <%= title%>
+    </div>
+  </body>
+</html>
+~~~
+
++ 结果
+
+![](./image/选区_123.png)
+
+## 8. koa-boby模块
+
+### 1. 前言
+
+> Koa-body模块
+>
+> Koa2中利用Koa-body代替koa-bodyparser和koa-multer。原来通过koa-bodyparser来打包Post请求的数据，通过koa-multer来处理multipart的文件;使用koa-body后，ctx.request.files获得Post中的文件信息。ctx.request.body获得Post上传的表单信息。
+
+**安装koa-body**
+
+~~~bash
+# koa-body安装
+yarn add koa-body
+~~~
+
+**参考**
+
++ [一篇好的koa教程](http://www.ptbird.cn/koa-body.html)
++ [koa-body文档](https://www.npmjs.com/package/koa-body)
+
+### 2. koa-body处理post例子
+
+~~~javascript
+const Koa = require('koa');
+const path = require('path');
+const Router = require('koa-router');
+const views = require('koa-views');
+const koaBody = require('koa-body');
+const fs = require('fs');
+
+const app = new Koa();
+
+const router = new Router();
+
+app.use(views(path.resolve(__dirname, './views')), {
+  extension: 'ejs'
+});
+
+// 先添加koaBody中间件
+app.use(
+  koaBody({
+    // 如果需要上传文件,multipart: true
+    //　不设置无法传递文件
+    multipart: true,
+    formidable: {
+      maxFileSize: 1000 * 1024 * 1024
+    },
+    patchKoa: true
+  })
+);
+
+router.get('/', async (ctx, next) => {
+  ctx.body = 'index';
+});
+
+router.get('/index', async ctx => {
+  await ctx.render('index.ejs');
+});
+
+router.post('/upload', async (ctx, next) => {
+  const file = ctx.request.files.file;
+  const formData = ctx.request.body;
+  const extname = path.extname(file.name);
+  //　本地文件服务器获取POST上传文件过程
+  // １. fs.createReadStream 创建可读流
+  // ２. fs.createWriteStream　创建可写流
+  // 3. reader.pipe(writer)
+  const reader = fs.createReadStream(file.path);
+  const writer = fs.createWriteStream(
+    `static/${Math.random()
+      .toString(36)
+      .substr(2)}${extname}`
+  );
+  reader.pipe(writer);
+  ctx.body = formData;
+});
+
+app.use(router.routes(), router.allowedMethods());
+
+app.listen(3000, () => {
+  console.log('server Port on 3000');
+});
+~~~
+
+> Notes:
+>
+> createReadStream, createWriteStream和pipe，就相当与创建两个蓄水池，pipe相当于水泵将可读流水池中的水写到可写流的水池中，也就是将文件从远端写到本地
+
+~~~javascript
+// index.ejs
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Document</title>
+  </head>
+  <body>
+    <form action="/upload" method="POST" enctype="multipart/form-data">
+      <p>file Upload</p>
+      <span>姓名: </span><input type="text" name="name" /> <br />
+      <span>年龄:</span><input type="text" name="age" /> <br />
+      <span>选择提交文件：</span>
+      <input type="file" name="file" /> <br />
+      <button type="submit">提交</button>
+    </form>
+  </body>
+</html>
+~~~
+
+### 3. 结果
+
+![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_125.png)
+
+![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_126.png)
+
+![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_127.png)
 

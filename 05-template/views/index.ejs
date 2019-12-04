@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="wFidth=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title><%= title %></title>
+  </head>
+  <body>
+    <%- include('./header.ejs', {title: title}); %>
+    <h1><%= title %></h1>
+    <p>My name is <%= name %>, <%= age %> years old</p>
+    <div>My Friends:</div>
+    <ul>
+      <% friends.forEach((elem, index) => { %>
+      <li><%= index+ 1%>-<%= elem %></li>
+      <%})%>
+    </ul>
+  </body>
+</html>
