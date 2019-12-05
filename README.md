@@ -1317,3 +1317,274 @@ app.listen(3000, () => {
 
 ![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_127.png)
 
+## 9. nodejs操作mysql
+
+### 0. 参考
+
++ [易百教程](https://www.yiibai.com/mysql/nodejs-insert.html)
++ [mysql Readme](https://www.npmjs.com/package/mysql#stored-procedures)
+
+### 1. mysql
+
+> ​	mysql是nodejs驱动mysql的库，mysql的库的使用方法：先和库之间进行链接，然后通过mysql语句对库内的数据进行增删改查
+
+~~~bash
+# 安装mysql
+yarn add mysql
+~~~
+
+### 2. 建立普通连接
+
+~~~javascript
+// index.js
+const mysql = require('mysql');
+const connection = mysql.createConnection({
+  host: 'localhost',
+  user: 'root',
+  password: 'mysql',
+  database: 'koa_demo'
+});
+
+// 连接数据库
+connection.connect();
+
+// 通过query方法，使用mysql语句查询数据
+connection.query('select * from book', (err, res, fields) => {
+  // error: 查询结果错误的ERROR
+  // results: sql语句查询的结果
+  // fields: 包含查询字段的信息
+  if (err) throw err;
+  // 查出的res是一个数组，每个元素为查询表得到的结果
+  const e = res[0];
+});
+
+// 查询完毕后，关闭数据库，避免占用资源
+connection.end();
+~~~
+
+### 3. 创建数据连接池
+
+每次会话都要配置连接参数，会导致数据库反复的连接操作浪费性能，通过连接池管理会话能提升性能。
+
+> 引用：
+>
+> This is a shortcut for the `pool.getConnection()` -> `connection.query()` ->`connection.release()` code flow. Using `pool.getConnection()` is useful to share connection state for subsequent queries. This is because two calls to `pool.query()` may use two different connections and run in parallel. 
+>
+> 使用数据连接池的代码流为，pool.getConnection() -> connections.query()操作sql语句 -> connection.release()来释放链接。使用pool.getConnection()可以分享connection这个连接状态给其内的queries(可以在连接依次的情况下多次进行调用query语句),这是因为两个pool.query()使用不同的connections可以并行运行。
+
+~~~javascript
+// pool.js
+const _ = require('lodash');
+
+const mysql = require('mysql');
+const pool = mysql.createPool({
+  host: 'localhost',
+  user: 'root',
+  password: 'mysql',
+  database: 'koa_demo'
+});
+
+const queryAllBookInfo = connection => {
+  connection.query('select * from book', (err, res, field) => {
+    res.map(elem => {
+      console.log(
+        _.join(
+          [
+            elem.book_id,
+            elem.book_title,
+            elem.book_author,
+            elem.book_submission_date
+          ],
+          '  '
+        )
+      );
+    });
+  });
+  connection.release();
+};
+
+const addBook = (connection, book) => {
+  const { book_title, book_author, book_submission_date } = book;
+  connection.query(
+    'insert into book(book_title,book_author,book_submission_date) values(?,?,?);',
+    [book_title, book_author, book_submission_date],
+    (err, res, fields) => {
+      console.log(err);
+      console.log(res);
+      console.log(fields);
+    }
+  );
+};
+
+pool.getConnection((err, connection) => {
+  queryAllBookInfo(connection);
+  addBook(connection, {
+    book_title: '海底历险记',
+    book_author: '西瓜',
+    book_submission_date: '1980-7-12'
+  });
+});
+~~~
+
+### 4. 实验结果
+
+![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_128.png)
+
+**运行pool.js**
+
+![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_129.png)
+
+**查询数据库**
+
+![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_131.png)
+
+### 5. async/await 封装使用mysql
+
++ Promise封装的用法: 通过异常捕获来操控reject, resolve 返回异常结果和返回正常结果
+
+~~~javascript
+// async-db.js
+const mysql = require('mysql');
+const { mysqlConfig } = require('./config.js');
+
+const pool = mysql.createPool(mysqlConfig);
+
+let query = (sql, values) =>
+  new Promise((resolve, reject) => {
+    pool.getConnection((err, connection) => {
+      if (err) {
+        reject(err);
+      } else {
+        connection.query(sql, values, (err, res, fields) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(res);
+          }
+
+          connection.release();
+        });
+      }
+    });
+  });
+
+module.exports = { query };
+~~~
+
+~~~javascript
+// 使用async/await进行封装
+async function getAll() {
+  const sql = 'select * from book';
+  const data = await query(sql);
+  data.map(elem =>
+    console.log(
+      `${elem.book_id} ${elem.book_title} ${elem.book_author} ${elem.book_submission_date}`
+    )
+  );
+}
+
+getAll();
+~~~
+
++ 结果
+
+![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_132.png)
+
+## 10. Koa2解决跨域问题
+
+### 1. 使用jsonp解决跨域问题
+
+**jsop核心：后端将数据以函数参数的形式进行返回，利用script跨域的方式来解决跨域问题;**
+
++ **设置方法**:
+  1. 获取想返回的响应体数据
+  2. 利用javascript callback(param)返回一个jsonp的函数体
+  3. 设置type为text/javascript
+  4. 设置返回的响应体
+
+~~~javascript
+// index.js
+const Koa = require('koa');
+const Router = require('koa-router');
+const views = require('koa-views');
+const path = require('path');
+
+const app = new Koa();
+const router = new Router();
+
+app.use(
+  views(path.resolve(__dirname, './views'), {
+    extension: 'ejs'
+  })
+);
+
+router.get('/', async ctx => {
+  ctx.render('./views/index.ejs', { title: 'Index' });
+});
+
+router.get('/getData', async ctx => {
+  const data = {
+    success: true,
+    data: {
+      text: 'this is jsonp api',
+      add: [1, 2, 3]
+    }
+  };
+  // 设置jsonpStr, 设置content-type和content-body
+  const jsonpStr = `callback(${JSON.stringify(data)})`;
+  ctx.type = 'text/javascript';
+  ctx.body = jsonpStr;
+});
+
+app.use(router.routes(), router.allowedMethods());
+
+app.listen(3000, () => console.log('server is on port 3000'));
+~~~
+
+**前端使用jsonp方法：**
+
++ 定义一个和hsonp请求回调函数相同的回调函数，函数的入参为调用接口得到的数据
++ 回调函数通过创建一个script标签和src，当结束回调后就删除该标签
++ 调用该callback后会直接进行调用
+
+~~~javascript
+// index.ejs
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title><%= title %></title>
+  </head>
+  <body>
+    <button href="/getData" class="myBtn">跳转</button>
+    <script
+      src="https://code.jquery.com/jquery-3.4.1.min.js"
+      integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
+      crossorigin="anonymous"
+    ></script>
+    <script>
+      const btn = document.querySelector('.myBtn');
+	  // 前端调用jsonp的使用方法
+      const callback = data => console.log(data);
+
+      $('.myBtn').click(e => {
+        const script = document.createElement('script');
+        script.src = 'http://localhost:3000/getData';
+        document.body.appendChild(script);
+        document.body.removeChild(script);
+      });
+    </script>
+  </body>
+</html>
+~~~
+
+**实验结果**
+
+![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_133.png)
+
+### 2. 使用CORS解决跨域问题
+
+
+
