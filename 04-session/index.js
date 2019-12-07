@@ -24,8 +24,6 @@ app.use(ctx => {
   // ignore favicon
   if (ctx.path === '/favicon.ico') return;
 
-  console.log(ctx.session);
-
   let user_id =
     ctx.session.user_id ||
     Math.random()

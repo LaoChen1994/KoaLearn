@@ -7,7 +7,8 @@
     <title><%= title %></title>
   </head>
   <body>
-    <button href="/getData" class="myBtn">跳转</button>
+    <button class="myBtn">跳转</button>
+    <button class="getMidData">jsonp middleware</button>
     <script
       src="https://code.jquery.com/jquery-3.4.1.min.js"
       integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
@@ -19,7 +20,7 @@
 
       $('.myBtn').click(e => {
         const script = document.createElement('script');
-        script.src = 'http://localhost:3000/getData';
+        script.src = 'http://localhost:5000/getData';
         document.body.appendChild(script);
         document.body.removeChild(script);
       });

@@ -1311,11 +1311,11 @@ app.listen(3000, () => {
 
 ### 3. 结果
 
-![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_125.png)
+![](./image/选区_125.png)
 
-![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_126.png)
+![](./image/选区_126.png)
 
-![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_127.png)
+![](./image/选区_127.png)
 
 ## 9. nodejs操作mysql
 
@@ -1428,15 +1428,15 @@ pool.getConnection((err, connection) => {
 
 ### 4. 实验结果
 
-![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_128.png)
+![](./image/选区_128.png)
 
 **运行pool.js**
 
-![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_129.png)
+![](./image/选区_129.png)
 
 **查询数据库**
 
-![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_131.png)
+![](./image/选区_131.png)
 
 ### 5. async/await 封装使用mysql
 
@@ -1488,7 +1488,7 @@ getAll();
 
 + 结果
 
-![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_132.png)
+![](./image/选区_132.png)
 
 ## 10. Koa2解决跨域问题
 
@@ -1582,9 +1582,131 @@ app.listen(3000, () => console.log('server is on port 3000'));
 
 **实验结果**
 
-![](/home/cyx/Desktop/Learning/KoaLearning/image/选区_133.png)
+![](./image/选区_133.png)
 
 ### 2. 使用CORS解决跨域问题
 
+#### 0. 参考资料
 
++ [阮老师的CORS帖子](https://www.ruanyifeng.com/blog/2016/04/cors.html)
++ [koa2-cors帖子](https://www.npmjs.com/package/koa2-cors)
+
+> CORS解决非同源请求的主要手段，通过添加allow-access-origin的请求头来解决上述问题
+
+#### 1. 安装koa2-cors
+
+~~~bash
+# 安装koa2-cors
+yarn add koa2-cors
+~~~
+
+#### 2. 代码实现
+
+~~~javascript
+// cors.js
+const Koa = require('koa');
+const cors = require('koa2-cors');
+const Router = require('koa-router');
+
+const router = new Router();
+
+const app = new Koa();
+
+app.use(
+  cors({
+    origin: function(ctx) {
+      // 只有域名在localhost:3000下的请求才能被获得
+      return 'http://localhost:3000';
+    },
+    exposeHeaders: ['WWW-Authenticate', 'Server-Authorization'],
+    maxAge: 1000,
+    credentials: true,
+    allowMethods: ['GET', 'POST', 'DELETE'],
+    allowHeaders: ['Content-Type', 'Authorization', 'Accept']
+  })
+);
+
+router.get('/getUserInfo', async ctx => {
+  ctx.body = [{ name: 'Mike', age: 18 }];
+});
+
+app.use(router.routes(), router.allowedMethods());
+
+app.listen(8000, () => {
+  console.log('server is on 8000');
+});
+~~~
+
+~~~javascript
+// App.js
+import React, { useState, useEffect } from 'react';
+import Axios from 'axios';
+import './App.css';
+
+Axios.defaults.withCredentials = true;
+
+function App() {
+  const [state, setState] = useState([]);
+  // 该react项目运行在3000端口
+  // 访问接口在8000属于跨域问题
+  const getUserInfo = () => Axios.get('http://localhost:8000/getUserInfo');
+
+  useEffect(() => {
+    async function getData() {
+      const { data } = await getUserInfo();
+      setState(data);
+    }
+    getData();
+  }, []);
+
+  return (
+    <div className="App">
+      <header className="App-header">
+        {state.map(elem => {
+          const { name, age } = elem;
+          return (
+            <div>
+              姓名：{name}, 年龄：{age}
+            </div>
+          );
+        })}
+      </header>
+    </div>
+  );
+}
+
+export default App;
+~~~
+
+#### 3. cors option
+
+##### 1. origin
+
+返回一个字符串，配置**Access-Control-Allow-Origin**的头信息，用于告诉浏览器允许访问该CORS的同源请求。如果配置为一个函数，函数的第一个参数为ctx
+
+##### 2. exposeHeaders
+
+用于配置**Access-Control-Expose-Headers** CORS 头信息. 可填项，为CORS请求时添加其他头字段。
+
+##### 3. maxAge
+
+配置 **Access-Control-Max-Age** CORS 头信息. 
+
+##### 4. credentials
+
+配置 **Access-Control-Allow-Credentials** CORS 头信息. 是否需要发送cookie.
+
+##### 5. allowMethods
+
+配置 **Access-Control-Allow-Methods** CORS 头. 默认值: `['GET', 'PUT', 'POST', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']`.
+
+#### 4. 实验结果
+
+![1575617638562](/home/cyx/.config/Typora/typora-user-images/1575617638562.png)
+
+![](./image/选区_135.png)
+
+> 这里配置了maxAge和allowMethod但是好像在头信息中没有包含Acess-Control-Allow-MaxAge等字段，后面查一下原因
+
+## 11. 使用Webpack 4和Koa2搭建开发框架
 

@@ -5,8 +5,12 @@
   "license": "MIT",
   "dependencies": {
     "ejs": "^3.0.1",
+    "jsonp": "^0.2.1",
     "koa": "^2.11.0",
+    "koa-cors": "^0.0.16",
+    "koa-jsonp": "^2.0.2",
     "koa-router": "^7.4.0",
-    "koa-views": "^6.2.1"
+    "koa-views": "^6.2.1",
+    "koa2-cors": "^2.0.6"
   }
 }

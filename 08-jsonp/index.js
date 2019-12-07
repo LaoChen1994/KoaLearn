@@ -6,6 +6,8 @@ const path = require('path');
 const app = new Koa();
 const router = new Router();
 
+const jsonp = require('koa-jsonp');
+
 app.use(
   views(path.join(__dirname, './views'), {
     extension: 'ejs'
@@ -13,6 +15,10 @@ app.use(
 );
 
 router.get('/', async ctx => {
+  await ctx.render('index.ejs', { title: 'Index' });
+});
+
+router.get('/index', async ctx => {
   await ctx.render('index.ejs', { title: 'Index' });
 });
 
@@ -32,4 +38,13 @@ router.get('/getData', async ctx => {
 
 app.use(router.routes(), router.allowedMethods());
 
-app.listen(3000, () => console.log('server is on port 3000'));
+app.use(jsonp());
+
+app.use(async ctx => {
+  if (ctx.url === '/getMidData') {
+    ctx.body = { success: true, data: 'use jsonp middleware' };
+    console.log(ctx.body);
+  }
+});
+
+app.listen(5000, () => console.log('server is on port 5000'));
