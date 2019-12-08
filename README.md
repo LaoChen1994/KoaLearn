@@ -1,4 +1,4 @@
-# Koa Learn
+# Koa 学习笔记
 
 ---
 
@@ -998,7 +998,6 @@ class RedisStore extends Store {
 
   async set(session, { sid = this.getID(24), maxAge = 3000 } = {}, ctx) {
     try {
-      console.log(maxAge);
       // Use redis set EX to automatically drop expired sessions
       await this.redis.set(
         `SESSION:${sid}`,
