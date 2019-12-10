@@ -4,6 +4,7 @@ const path = require('path');
 const static = require('koa-static');
 const session = require('koa-session2');
 const Store = require('./models/redis');
+const koaBody = require('koa-body');
 
 const router = require('./routes/index');
 
@@ -17,7 +18,19 @@ app.use(
   session({
     store: new Store(),
     key: 'SessionId',
-    maxAge: 6000
+    maxAge: 86400000,
+    domain: 'localhost',
+    path: '/'
+  })
+);
+
+app.use(
+  koaBody({
+    multipart: true,
+    formidable: {
+      maxFileSize: 1000 * 1024 * 1024
+    },
+    patchKoa: true
   })
 );
 

@@ -1708,4 +1708,3 @@ export default App;
 > 这里配置了maxAge和allowMethod但是好像在头信息中没有包含Acess-Control-Allow-MaxAge等字段，后面查一下原因
 
 ## 11. 使用Webpack 4和Koa2搭建开发框架
-

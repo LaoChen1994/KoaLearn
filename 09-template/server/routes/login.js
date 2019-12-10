@@ -6,7 +6,11 @@ loginRouter.get('/', async ctx => {
     age: 18
   };
 
-  await ctx.render('login.ejs', { title: 'Login', _global });
+  if (ctx.session.username) {
+    ctx.redirect('/');
+  }
+
+  await ctx.render('login.ejs', { title: 'Login' });
 });
 
 module.exports = loginRouter;

@@ -2,5 +2,7 @@ const config = {
   host: 'localhost',
   user: 'root',
   password: 'mysql',
-  databases: 'koa_demo'
+  database: 'koa_demo'
 };
+
+module.exports = config;

@@ -1,18 +1,12 @@
--- Create a new table called 'TableName' in schema 'SchemaName'
--- Drop the table if it already exists
-DROP TABLE IF EXISTS KOA_USER_INFO
-
--- Create the table in the specified schema
+DROP TABLE IF EXISTS KOA_USER_INFO;
 CREATE TABLE KOA_USER_INFO
 (
-  USERID INT NOT NULL PRIMARY KEY,
-  -- primary key column
-  PASSWORD VARCHAR(255) NOT NULL,
-  EMAIL VARCHAR(255) NOT NULL,
-  USERNAME VARCHAR(255) NOT NULL
-  -- specify more columns here
+  userId INT NOT NULL,
+  passwd VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  username VARCHAR(255) NOT NULL,
+  PRIMARY KEY (userId)
 );
-
 INSERT INTO KOA_USER_INFO
-  (USERNAME, PASSWORD, EMAIL)
-VALUES('testCyx', '19941116', '735849467@qq.com')
+  (username, passwd, email)
+VALUES('testCyx', '19941116', '735849467@qq.com');

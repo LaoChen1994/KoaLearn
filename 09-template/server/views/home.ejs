@@ -5,10 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <title><%= title %></title>
+    <% if(userInfo) {%>
+    <script>
+      window._global = JSON.parse('<%- JSON.stringify(userInfo) %>');
+    </script>
+    <%}%>
   </head>
   <body>
     <div id="app"></div>
     <script src="/js/vendors~error~index~login.bundle.js"></script>
+    <script src="/js/vendors~index.bundle.js"></script>
     <script src="/js/index.bundle.js"></script>
   </body>
 </html>

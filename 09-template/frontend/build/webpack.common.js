@@ -22,7 +22,27 @@ module.exports = {
       },
       {
         test: /\.s(a|c)ss/,
-        use: ['sass-node', 'sass-loader']
+        use: ['style-loader', 'css-loader', 'sass-loader']
+      },
+      {
+        test: /\.jsx$/,
+        exclude: /(node_modules)/,
+        use: {
+          loader: 'babel-loader',
+          options: {
+            presets: [
+              [
+                '@babel/preset-env',
+                {
+                  targets: {
+                    node: '10'
+                  }
+                }
+              ],
+              '@babel/preset-react'
+            ]
+          }
+        }
       }
     ]
   },

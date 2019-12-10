@@ -11,9 +11,16 @@
     "init_table": "node ./init/utils/init.js"
   },
   "dependencies": {
+    "@babel/core": "^7.7.5",
+    "@babel/preset-env": "^7.7.6",
+    "@babel/preset-react": "^7.7.4",
+    "@types/classnames": "^2.2.9",
     "@types/lodash": "^4.14.149",
     "@types/react": "^16.9.15",
     "@types/react-dom": "^16.9.4",
+    "axios": "^0.19.0",
+    "babel-loader": "^8.0.0-beta.6",
+    "classnames": "^2.2.6",
     "clean-webpack-plugin": "^3.0.0",
     "css-loader": "^3.2.1",
     "ejs": "^3.0.1",
@@ -41,6 +48,7 @@
     "uglifyjs-webpack-plugin": "^2.2.0",
     "webpack": "^4.41.2",
     "webpack-dev-server": "^3.9.0",
-    "webpack-merge": "^4.2.2"
+    "webpack-merge": "^4.2.2",
+    "zent": "^7.4.0"
   }
 }

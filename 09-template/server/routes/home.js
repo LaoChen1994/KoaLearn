@@ -1,9 +1,6 @@
 const homeRouter = require('koa-router')();
+const HomeController = require('../controllers/HomeController.js');
 
-homeRouter.get('/', async ctx => {
-  await ctx.render('home.ejs', {
-    title: '主页'
-  });
-});
+homeRouter.get('/', HomeController.getHomeIndex);
 
 module.exports = homeRouter;
