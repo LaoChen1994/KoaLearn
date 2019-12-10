@@ -6,7 +6,7 @@
 
 ```bash
 # 启动 node server
-npm run start_server
+npm run server
 
 # 启动开发模式
 npm run dev_fro
