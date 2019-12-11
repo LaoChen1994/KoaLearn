@@ -1704,7 +1704,7 @@ export default App;
 
 #### 4. 实验结果
 
-![1575617638562](/home/cyx/.config/Typora/typora-user-images/1575617638562.png)
+![](./image/134.png)
 
 ![](./image/选区_135.png)
 
@@ -2436,3 +2436,8 @@ export const App: React.FC<Props> = () => {
 ### 5. 完整代码
 
 具体代码可以查询: [github代码地址](https://github.com/LaoChen1994/KoaLearn/tree/master/09-template)
+
+### 6.实验结果
+
+![](./image/koa-template-video.gif)
+
