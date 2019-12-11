@@ -11,7 +11,6 @@ const userController = {
       ctx.body = { success: false, msg: '用户不存在' };
     } else {
       const { password: pwd, userId, email } = queryData[0];
-      console.log(queryData);
       if (pwd === password) {
         ctx.session = { username, password, userId, email };
         ctx.body = { success: true };
@@ -32,6 +31,7 @@ const userController = {
         ctx.body = { success: false, msg: '用户名冲突' };
       }
     } catch (error) {
+      console.log(error)
       ctx.body = { success: false, msg: error };
     }
   }

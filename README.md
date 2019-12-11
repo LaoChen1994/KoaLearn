@@ -1591,6 +1591,9 @@ app.listen(3000, () => console.log('server is on port 3000'));
 + [koa2-cors帖子](https://www.npmjs.com/package/koa2-cors)
 
 > CORS解决非同源请求的主要手段，通过添加allow-access-origin的请求头来解决上述问题
+>
+> 1. 简单请求，服务器直接添加三个头信息
+> 2. 非简单请求，浏览器请求为同源请求，再次请求时，服务器带上头信息(多一次请求)
 
 #### 1. 安装koa2-cors
 
@@ -1707,4 +1710,729 @@ export default App;
 
 > 这里配置了maxAge和allowMethod但是好像在头信息中没有包含Acess-Control-Allow-MaxAge等字段，后面查一下原因
 
-## 11. 使用Webpack 4和Koa2搭建开发框架
+## 11. 使用Webpack 4，Koa2和React搭建开发框架
+
+### 1. Webpack配置
+
+#### 1. 脚本配置
+
+~~~json
+// package.json
+"scripts": {
+    "server": "node ./server/index.js",
+    "dev_fro": "webpack-dev-server --config ./frontend/build/webpack.dev.js --mode development --open",
+    "pro_fro": "webpack --config ./frontend/build/webpack.prod.js --mode production",
+    "dev_server": "npm run server & npm run dev_fro",
+    "init_table": "node ./init/utils/init.js"
+  },
+~~~
+
+**webpack打包配置啥**
+
++ 页面打包配置
++ 本地调试配置webpack-dev-server
++ 使用loader和modules的配置
+
+### 2.  前端打包配置
+
+#### 1. 页面配置
+
++ webpack开发者模式和生产环境分离
+
+~~~javascript
+// webpack.common.js
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const path = require('path');
+
+module.exports = {
+  entry: {
+    // 三个页面入口
+    index: path.resolve(__dirname, '../src/page/index.tsx'),
+    login: path.resolve(__dirname, '../src/page/login.tsx'),
+    error: path.resolve(__dirname, '../src/page/error.tsx')
+  },
+  mode: 'development',
+  resolve: { extensions: ['.tsx', '.js', '.ts'] },
+  module: {
+    rules: [
+      {
+        // 添加typescript 转换器
+        test: /\.tsx?$/,
+        loader: 'ts-loader',
+        exclude: /node_modules/
+      },
+      {
+        test: /\.css$/,
+        use: ['style-loader', 'css-loader']
+      },
+      {
+        // 添加scss转换器
+        test: /\.s(a|c)ss/,
+        use: ['style-loader', 'css-loader', 'sass-loader']
+      },
+      {
+        // 对于react进行babel转义
+        test: /\.jsx$/,
+        exclude: /(node_modules)/,
+        use: {
+          loader: 'babel-loader',
+          options: {
+            presets: [
+              [
+                '@babel/preset-env',
+                {
+                  targets: {
+                    node: '10'
+                  }
+                }
+              ],
+              '@babel/preset-react'
+            ]
+          }
+        }
+      }
+    ]
+  },
+  plugins: [new CleanWebpackPlugin()],
+  output: {
+    filename: '[name].bundle.js',
+    // 将打包完的js文件导入到server中，在koa2渲染的view中进行引用即可
+    path: path.resolve(__dirname, '../../server/static/js')
+  },
+  optimization: {
+    splitChunks: {
+      cacheGroups: {
+        // 将打包的公共部分进行提取
+        // 打包得到的name为vendor
+        commons: {
+          test: /[\\/]node_modules[\\/]/,
+          name: 'vendor',
+          chunks: 'all'
+        }
+      }
+    }
+  }
+};
+
+~~~
+
+~~~javascript
+//webpack.dev.js
+const merge = require('webpack-merge');
+const common = require('./webpack.common');
+const webpack = require('webpack');
+const path = require('path');
+
+module.exports = merge(common, {
+  devtool: 'inline-source-map',
+  devServer: {
+    contentBase: path.resolve(__dirname, '../../server/static/js'),
+    hot: true
+  },
+  mode: 'development',
+  plugins: [
+    new webpack.NamedChunksPlugin(),
+    new webpack.HotModuleReplacementPlugin()
+  ]
+});
+
+~~~
+
+~~~javascript
+// webpack.prod.js
+const merge = require('webpack-merge');
+const common = require('./webpack.common');
+const TerserPlugin = require('terser-webpack-plugin');
+
+module.exports = merge(common, {
+  mode: 'production',
+  optimization: {
+    minimize: true,
+    minimizer: [new TerserPlugin()]
+  }
+});
+~~~
+
+> Notes:
+>
+> 1. unify-webpack-plugin因为不支持es6 ，这里通过terserPlugin来进行js压缩
+> 2. 通过webpack-merge合并多个config
+
+### 2. Koa2-React基础配置
+
+#### 1. Koa2 Server配置
+
+##### 1. 目录信息
+
+![](./image/选区_136.png)
+
+##### 2. 入口文件配置
+
+~~~javascript
+// index.js
+const Koa = require('koa');
+const view = require('koa-views');
+const path = require('path');
+const static = require('koa-static');
+const session = require('koa-session2');
+const Store = require('./models/redis');
+const koaBody = require('koa-body');
+
+const router = require('./routes/index');
+
+const app = new Koa();
+
+app.use(view(path.resolve(__dirname, './views/')), {
+  extension: 'ejs'
+});
+
+// 配置session中间件
+app.use(
+  session({
+    store: new Store(),
+    key: 'SessionId',
+    maxAge: 86400000,
+    domain: 'localhost',
+    path: '/'
+  })
+);
+
+app.use(
+  koaBody({
+    multipart: true,
+    formidable: {
+      maxFileSize: 1000 * 1024 * 1024
+    },
+    patchKoa: true
+  })
+);
+
+// 这个koa-static一定要，不然在view中导入js文件的时候使用相对路径导入，会出现问题
+app.use(static(path.resolve(__dirname, './static/')));
+
+app.use(router.routes(), router.allowedMethods());
+
+app.listen(8080, () => {
+  console.log('server is on port 8080');
+});
+~~~
+
++ 前端页面调用数据过程
+  + 过程１: 前端访问某个路由，在routes中找到对应的路由所对应控制器的方法进行操作
+  + 过程2和过程5: controller处理某个路由对应的任务（HTTP请求和模板渲染），如果是模板渲染通过koa-views对特定模板进行渲染或者调用数据库，处理后以http的形式返回给前端
+  + 过程3: 在model中通过对数据库的查询，完成对数据的处理
+  + 过程４: 
+
+![](./image/选区_139.png)
+
+
+
+##### 3. 路由配置
+
++ routes
+
+~~~javascript
+// routes/index.js
+const Router = require('koa-router');
+
+const router = new Router();
+
+const homeRouter = require('./home.js');
+const errRouter = require('./error.js');
+const loginRouter = require('./login.js');
+const apiRouter = require('./api.js');
+
+router.use('/', homeRouter.routes(), homeRouter.allowedMethods());
+router.use('/err', errRouter.routes(), errRouter.allowedMethods());
+router.use('/login', loginRouter.routes(), loginRouter.allowedMethods());
+router.use('/api', apiRouter.routes(), apiRouter.allowedMethods());
+
+module.exports = router;
+
+// routes/login.js
+const loginRouter = require('koa-router')();
+
+loginRouter.get('/', async ctx => {
+  const _global = {
+    username: 'Mike',
+    age: 18
+  };
+
+  if (ctx.session.username) {
+    ctx.redirect('/');
+  }
+
+  await ctx.render('login.ejs', { title: 'Login' });
+});
+
+module.exports = loginRouter;
+
+// routes/home.js
+const homeRouter = require('koa-router')();
+const HomeController = require('../controllers/HomeController.js');
+
+homeRouter.get('/', HomeController.getHomeIndex);
+
+module.exports = homeRouter;
+
+// routes/error.js
+const errRouter = require('koa-router')();
+
+errRouter.get('*', async ctx => {
+  await ctx.render('error.ejs', {
+    title: 'Error',
+    Content: 'Page is Not Found'
+  });
+});
+
+module.exports = errRouter;
+
+// routes/api.js
+const Router = require('koa-router');
+const router = new Router();
+const UserController = require('../controllers/UserController.js');
+
+router.post('/login', UserController.handleLogin);
+router.post('/register', UserController.handleRegister);
+
+module.exports = router;
+~~~
+
++ controllers
+
+~~~javascript
+// HomeController.js
+const HomeController = {
+  async getHomeIndex(ctx) {
+    let userInfo = null;
+
+    if (ctx.session.username) {
+      userInfo = {};
+      userInfo.username = ctx.session.username;
+      userInfo.userId = ctx.session.userId;
+      userInfo.email = ctx.session.email;
+      ctx.session.userInfo = userInfo;
+    }
+
+    await ctx.render('home.ejs', {
+      title: '主页',
+      userInfo
+    });
+  }
+};
+
+module.exports = HomeController;
+
+// UserController.js
+const { searchUserByName } = require('../models/userInfo');
+const { addUser } = require('../models/userInfo');
+
+const userController = {
+  async handleLogin(ctx) {
+    const body = ctx.request.body;
+    const { username, password } = body;
+    const queryData = await searchUserByName(username);
+
+    if (queryData.length === 0) {
+      ctx.body = { success: false, msg: '用户不存在' };
+    } else {
+      const { password: pwd, userId, email } = queryData[0];
+      if (pwd === password) {
+        ctx.session = { username, password, userId, email };
+        ctx.body = { success: true };
+      } else {
+        ctx.body = { success: false, msg: '密码错误' };
+      }
+    }
+  },
+  async handleRegister(ctx) {
+    const { username, password, email } = ctx.request.body;
+
+    const queryList = await searchUserByName(username);
+    try {
+      if (!queryList.length) {
+        const data = await addUser(username, password, email);
+        ctx.body = { success: true, msg: '注册成功', data };
+      } else {
+        ctx.body = { success: false, msg: '用户名冲突' };
+      }
+    } catch (error) {
+      console.log(error)
+      ctx.body = { success: false, msg: error };
+    }
+  }
+};
+
+module.exports = userController;
+
+~~~
+
++ views
+
+~~~html
+<!--- login.ejs --->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title><%= title %></title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="/js/vendor.bundle.js"></script>
+    <script src="/js/login.bundle.js"></script>
+  </body>
+</html>
+    
+<!--- 还有login.ejs和home.ejs --->
+
+~~~
+
++ models
+
+~~~javascript
+// models/userInfo.js
+const { query } = require('../../init/utils/query');
+
+const addUser = (username, password, email) => {
+  // 通过调用sql语句调用数据库
+  const sql =
+    'insert into KOA_USER_INFO(username,password,email) values(?,?,?)';
+  return query(sql, [username, password, email]);
+};
+
+// 根据用户名查询数据
+const searchUserByName = username => {
+  const sql = `select * from KOA_USER_INFO where username=?`;
+  return query(sql, [username]);
+};
+
+module.exports = {
+  addUser,
+  searchUserByName
+};
+~~~
+
++ mysql 配置
+
+~~~~javascript
+// config.js
+const config = {
+  host: 'localhost',
+  user: 'root',
+  password: 'mysql',
+  database: 'koa_demo',
+  multipleStatements: true
+};
+
+module.exports = config;
+
+// 表单初始化init
+const { query } = require('./query.js');
+const readSqlFile = require('./readSqlFile');
+const path = require('path');
+
+const initTable = async () => {
+  try {
+    const sql = await readSqlFile(
+      path.resolve(__dirname, '../sql/user-info.sql')
+    );
+    const data = await query(sql);
+    console.log('初始化表单成功!');
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+initTable();
+
+//　启动sql池
+//　query.js
+const mysql = require('mysql');
+const config = require('../config');
+
+const pool = mysql.createPool(config);
+
+let query = (sql, values) =>
+  new Promise((resolve, reject) => {
+    pool.getConnection((error, connection) => {
+      if (error) {
+        reject(error);
+      } else {
+        connection.query(sql, values, (err, data) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(data);
+          }
+        });
+      }
+    });
+  });
+
+module.exports = { query };
+
+// readSqlFile.js
+const fs = require('fs');
+
+function readSqlFile(filePath) {
+  return new Promise((resolve, reject) => {
+    fs.readFile(filePath, 'binary', (err, data) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(data);
+      }
+    });
+  });
+}
+
+module.exports = readSqlFile;
+
+~~~~
+
++ sql文件
+
+~~~sql
+/*user-info.sql*/
+DROP TABLE IF EXISTS KOA_USER_INFO;
+CREATE TABLE KOA_USER_INFO
+(
+  userId INT NOT NULL AUTO_INCREMENT,
+  password VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  username VARCHAR(255) NOT NULL,
+  PRIMARY KEY (userId)
+);
+INSERT INTO KOA_USER_INFO
+  (username, password, email)
+VALUES('testCyx', '19941116', '735849467@qq.com');
+~~~
+
+> Notes: 
+>
+> 1. 在view中导入js文件可能出现路径错误的情况，可能是因为没有使用Koa-static中间件，或者路径配置错误
+> 2. 配置mysql config中multipleStatements必须得到配置，配置之后connection.query可以执行多条sql语句
+> 3. 通过readFile读取sql文件后通过query执行该语句
+
+### 3. React前端实现
+
++ 登录页
+
+~~~javascript
+// Login.jsx
+import React, { useState } from 'react';
+import _ from 'lodash';
+import {
+  Button,
+  Form,
+  FormInputField,
+  FormStrategy,
+  Validators,
+  Notify
+} from 'zent';
+import './sass/login.sass';
+import 'zent/css/index.css';
+import Axios from 'axios';
+import { Tabs } from 'zent';
+
+const TabPanel = Tabs.TabPanel;
+
+const equalsPasswd = (value, ctx) => {
+  console.log(ctx.getSectionValue('password'));
+  if (value !== ctx.getSectionValue('password').password) {
+    return {
+      name: 'passwordEqual',
+      message: '两次填写的密码不一致'
+    };
+  }
+  return null;
+};
+
+export const App = () => {
+  const [activeId, setActiveId] = useState(0);
+
+  const loginForm = Form.useForm(FormStrategy.View);
+  const resigterForm = Form.useForm(FormStrategy.View);
+
+  const handleLogin = async () => {
+    const value = loginForm.getValue();
+    const data = await Axios.post('http://localhost:8080/api/login', value);
+    if (data.data.success) {
+      Notify.success('登录成功！');
+      location.pathname = '/';
+    } else {
+      Notify.error(data.data.msg);
+    }
+  };
+
+  const handleRes = async () => {
+    const value = resigterForm.getValue();
+    const data = await Axios.post('http://localhost:8080/api/register', value);
+    if (data.data.success) {
+      Notify.success('注册成功');
+      resigterForm.resetValue();
+    } else {
+      Notify.error(data.msg);
+    }
+  };
+
+  const renderResForm = () => (
+    <Form layout="horizontal" form={resigterForm}>
+      <FormInputField
+        name="username"
+        label="用户名："
+        required="请输入用户名"
+      ></FormInputField>
+      <FormInputField
+        name="password"
+        label="密码："
+        required
+        props={{ type: 'password' }}
+      ></FormInputField>
+      <FormInputField
+        name="confirmPassword"
+        label="确认密码："
+        required
+        props={{
+          type: 'password'
+        }}
+        validators={[equalsPasswd]}
+      ></FormInputField>
+      <FormInputField
+        name="email"
+        label="邮件："
+        validators={[Validators.email('请输入邮箱地址')]}
+        required
+      ></FormInputField>
+      <Button htmlType="submit" type="primary" outline onClick={handleRes}>
+        提交
+      </Button>
+      <Button type="danger" outline onClick={() => resigterForm.resetValue()}>
+        清空
+      </Button>
+    </Form>
+  );
+
+  const renderLogin = () => (
+    <Form form={loginForm} layout="horizontal">
+      <FormInputField
+        name="username"
+        required="请输入用户名"
+        label="用户名："
+      ></FormInputField>
+      <FormInputField
+        name="password"
+        required="请输入密码"
+        label="密码："
+        props={{
+          type: 'password'
+        }}
+      ></FormInputField>
+      <Button htmlType="submit" onClick={handleLogin} outline type="primary">
+        提交
+      </Button>
+    </Form>
+  );
+
+  const handleTabChange = id => {
+    setActiveId(id);
+  };
+
+  return (
+    <div className="wrapper">
+      <Tabs activeId={activeId} onChange={handleTabChange}>
+        <TabPanel tab={<span>登录</span>} id={0}>
+          {renderLogin()}
+        </TabPanel>
+        <TabPanel tab={<span>注册</span>} id={1}>
+          {renderResForm()}
+        </TabPanel>
+      </Tabs>
+    </div>
+  );
+};
+
+~~~
+
++ index
+
+~~~javascript
+import React from 'react';
+import { Button } from 'zent';
+interface Props {}
+
+interface IUserInfo {
+  username: string;
+  userId: string;
+  email: string;
+}
+
+interface IGlobal {
+  userInfo: IUserInfo;
+}
+
+export const App: React.FC<Props> = () => {
+  // @ts-ignore
+  const _global: IGlobal = { userInfo: window._global };
+  console.log(_global);
+
+  const renderUserInfo = (userInfo: IUserInfo) => {
+    return (
+      <ul>
+        <li>
+          用户ID: <span>{userInfo.userId}</span>
+        </li>
+        <li>
+          姓名: <span>{userInfo.username}</span>
+        </li>
+        <li>
+          邮箱: <span>{userInfo.email}</span>
+        </li>
+      </ul>
+    );
+  };
+
+  const renderUserLogin = () => (
+    <div>
+      <Button
+        type="primary"
+        outline
+        onClick={() => (location.pathname = '/login')}
+      >
+        登录
+      </Button>
+    </div>
+  );
+
+  return (
+    <div>
+      <h1>Index</h1>
+      <div>
+        {_global.userInfo
+          ? renderUserInfo(_global.userInfo)
+          : renderUserLogin()}
+      </div>
+    </div>
+  );
+};
+~~~
+
+### 4. 利用session记住用户名密码
+
+#### 1. 使用session方案梳理
+
++ 登录
+  + 用户输入登录信息POST
+  + 通过和数据库保存的用户信息进行比对
+  + 当匹配成功之后，产生一个sessionId保存到数据库中，然后通过ctx.session,发送session头，让浏览器将sessionId存在浏览器中，下次发送请求时浏览器会自动带上sessionId,后端通过查询sessionId是否存在即可记住用户的登录信息
+
+#### 2. 代码实现
+
+![](./image/选区_140.png)
+
+### 5. 完整代码
+
+具体代码可以查询: [github代码地址](https://github.com/LaoChen1994/KoaLearn/tree/master/09-template)

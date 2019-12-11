@@ -3,7 +3,6 @@ const HomeController = {
     let userInfo = null;
 
     if (ctx.session.username) {
-      console.log(ctx.session);
       userInfo = {};
       userInfo.username = ctx.session.username;
       userInfo.userId = ctx.session.userId;
