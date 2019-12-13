@@ -1,0 +1,41 @@
+Arguments: 
+  /home/cyx/.nvm/versions/node/v10.13.0/bin/node /usr/local/node-v10.9.0-linux-x64/bin/yarn add koa koa-static koa-router koa-jwt bcrtpt jsonwebtoken
+
+PATH: 
+  /home/cyx/.nvm/versions/node/v10.13.0/bin:/usr/local/cuda-9.0/bin:/home/cyx/anaconda3/bin:/home/cyx/bin:/home/cyx/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/mongodb/bin:/home/cyx/MyUser/pycharm/bin:/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/home/cyx/MyUser/pycharm/bin:/usr/local/mongodb/mongodb-linux-x86_64-ubuntu1604-3.6.4/bin:/home/cyx/MyUser/rar/rar:/usr/local/MATLAB/R2017a/bin/:/home/cyx/MyUser/jdk-10.0.2/bin:/opt/deepinwine/apps/Deepin-ThunderSpeed:/opt/deepinwine/apps/Deepin-QQ:/opt/deepinwine/apps/Deepin-BaiduNetDisk:/opt/deepinwine/apps/Deepin-TIM:/opt/WebStorm/bin/:/home/cyx/Desktop/pythonFile/WEBLearning/ECMA6/node_modules/.bin/:/usr/local/node-v10.9.0-linux-x64/lib/node_modules/@vue/cli/:/usr/local/node-v10.9.0-linux-x64/bin/:/home/cyx/Downloads/pycharm-community-2019.2.4/bin:/usr/local/go/bin:/home/cyx/Desktop/Learning/flutter/bin
+
+Yarn version: 
+  1.19.1
+
+Node version: 
+  10.13.0
+
+Platform: 
+  linux x64
+
+Trace: 
+  Error: https://registry.npm.taobao.org/bcrtpt: Not found
+      at Request.params.callback [as _callback] (/usr/local/node-v10.9.0-linux-x64/lib/node_modules/yarn/lib/cli.js:66926:18)
+      at Request.self.callback (/usr/local/node-v10.9.0-linux-x64/lib/node_modules/yarn/lib/cli.js:140564:22)
+      at Request.emit (events.js:182:13)
+      at Request.<anonymous> (/usr/local/node-v10.9.0-linux-x64/lib/node_modules/yarn/lib/cli.js:141536:10)
+      at Request.emit (events.js:182:13)
+      at IncomingMessage.<anonymous> (/usr/local/node-v10.9.0-linux-x64/lib/node_modules/yarn/lib/cli.js:141458:12)
+      at Object.onceWrapper (events.js:273:13)
+      at IncomingMessage.emit (events.js:187:15)
+      at endReadableNT (_stream_readable.js:1094:12)
+      at process._tickCallback (internal/process/next_tick.js:63:19)
+
+npm manifest: 
+  {
+    "name": "10-jwt_sample",
+    "version": "1.0.0",
+    "main": "index.js",
+    "license": "MIT"
+  }
+
+yarn manifest: 
+  No manifest
+
+Lockfile: 
+  No lockfile

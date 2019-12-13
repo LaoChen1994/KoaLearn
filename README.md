@@ -1710,7 +1710,194 @@ export default App;
 
 > 这里配置了maxAge和allowMethod但是好像在头信息中没有包含Acess-Control-Allow-MaxAge等字段，后面查一下原因
 
-## 11. 使用Webpack 4，Koa2和React搭建开发框架
+## 11. Koa2使用Json Web Token(JWT)
+
+### 0. 参考
+
+[nodejs 使用JWT鉴权](https://github.com/lin-xin/blog/issues/28)
+
+### 1. 为什么要用JWT
+
+调用接口时，如果不用鉴权，任何用户都能通过http调用该接口, 通过鉴权就能保护API接口，只有当用户具有权限时，才能访问该接口
+
+### 2. 利用Koa2实现JWT
+
+#### 1. 实现方案
+
++ 方案1:  将jwt放在浏览器的cookie中或localStorage，每次请求接口会自动将cookie的信息由浏览器带到后端(无法跨域)，放在HTTP请求的头信息Authorization中(可以跨域)
++ 方案2: 每次跨域的时候,把Token带入带请求的数据体里
+
+#### 2. 使用token鉴权流程
+
+![](https://raw.githubusercontent.com/lin-xin/blog/master/jwt-demo/public/jwt.png)
+
++ 用户登录验证成功后端返回给前端token
++ 浏览器调API时通过cookie自动带上token或者通过在post时带上token
++ 后端鉴权后，数据库增删改查返回数据或者过期鉴权失败，不予调用接口
+
+#### 3. 代码实现
+
+##### 1. 依赖安装
+
++ jsonwebtoken:用于将需要保存在token中的信息通过secret进行token加密
++ bcrypt: 用于编码加密
++ koa-jwt: koa用于鉴权，将前端通过header传递的token解析为数据，进行后序的鉴权操作,将jwt解析的信息保存在ctx.state中
+
++ 代码实现
+
+##### 2.服务器配置
+
+~~~javascript
+//　koa服务器配置
+const Koa = require('koa');
+const koaBody = require('koa-body');
+const router = require('./router/index.js');
+const cors = require('koa2-cors');
+const koajwt = require('koa-jwt');
+
+const app = new Koa();
+
+app.use(cors({
+  origin: function(ctx){
+    return 'http://localhost:3000';
+  },
+  exposeHeaders: ['WWW-Authenticate', 'Server-Authorization'],
+  maxAge: 1000,
+  credentials: true,
+  allowHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  allowMethods: ['GET', 'POST', 'DELETE']
+}))
+
+app.use((ctx, next) => {
+  return next().catch(err =>　{
+    if(err.status === 401){
+      ctx.status = 401;
+      ctx.body = 'Protected Resource'
+    } else {
+      throw err;
+    }
+  })
+})
+
+//　配置koajwt加密的secret
+//　请求和unless内的Regex匹配的时候，不用jwt鉴权
+app.use(koajwt({
+  secret: 'myToken'
+}).unless({path: [/\/login$/ig]}))
+
+app.use(koaBody());
+
+app.use(router.routes(), router.allowedMethods());
+
+app.listen(8000, () => {
+  console.log('Server is on 8000');
+});
+
+~~~
+
+##### 3. 接口进行鉴权
+
+~~~javascript
+const Router = require('koa-router');
+const router = new Router();
+const { queryUserInfo } = require('../models/query.js');
+const jwt = require('jsonwebtoken');
+
+router.post('/login', async ctx => {
+  const data = ctx.request.body;
+  const { username, password } = data;
+  const userInfo = await queryUserInfo(username, password);
+  if (userInfo.length) {
+    // 产生jwt
+    const token = jwt.sign(
+      {
+        username,
+        password
+      },
+      'myToken',
+      {
+        algorithm: 'HS256',
+        expiresIn: 1000
+      }
+    );
+    // 将token传给前端，前端将token存在LocalStorage
+    // 之后调用接口时候带上token即可
+    ctx.body = { success: true, msg: '登录成功', token };
+  } else {
+    ctx.body = {
+      success: false,
+      msg: '用户名帐号密码错误'
+    };
+  }
+});
+
+router.get('/index', async ctx => {
+  // 将解析的token内容放在state中
+  const { user } = ctx.state;
+  const { username, password } = user;
+  const queryUser = await queryUserInfo(username, password);
+
+  if (queryUser.length) {
+    ctx.body = '鉴权成功';
+  } else {
+    ctx.body = '鉴权失败';
+  }
+});
+
+module.exports = router;
+~~~
+
+##### 4. 数据库操作
+
+~~~javascript
+// query.js
+const mysql = require('mysql');
+const { config } = require('./config.js');
+
+const pool = mysql.createPool(config);
+
+const queryUserInfo = (username, password) => {
+  const sql = `select * from KOA_USER_INFO where username=? and password=?`;
+  return new Promise((resolve, reject) => {
+    pool.getConnection((error, connection) => {
+      if (error) {
+        reject(error);
+      } else {
+        connection.query(sql, [username, password], (err, data) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(data);
+          }
+        });
+      }
+
+      connection.release();
+    });
+  });
+};
+
+module.exports = { queryUserInfo };
+~~~
+
+##### 5. axios添加Authorization
+
+~~~javascript
+import Axios from 'axios';
+
+// axios拦截器的作用是在发送请求之前对头请求进行自定义配置
+Axios.interceptors.request.use(config => {
+  const token = localStorage.getItem('token');
+  config.headers.common['Authorization'] = 'Bearer ' + token;
+  return config;
+});
+~~~
+
+#### 4. 实验结果
+
+
+
+## 12. 使用Webpack 4，Koa2和React搭建开发框架
 
 ### 1. Webpack配置
 
