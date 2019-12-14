@@ -1893,8 +1893,6 @@ Axios.interceptors.request.use(config => {
 });
 ~~~
 
-#### 4. 实验结果
-
 
 
 ## 12. 使用Webpack 4，Koa2和React搭建开发框架
